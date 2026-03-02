@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .font-display {
+    font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  }
+}
+
 @layer base {
   * {
     box-sizing: border-box;
@@ -58,6 +64,30 @@
 
   .stat-value {
     @apply text-lg font-bold text-gray-900 dark:text-white;
+  }
+}
+
+/* ── Premium Dashboard additions ─────────────────────────────── */
+@layer components {
+  .btn-gold {
+    @apply flex items-center gap-2 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-900 px-4 py-2.5 rounded-xl font-semibold transition-all text-sm shadow-sm hover:shadow-md;
+  }
+
+  .card-premium {
+    @apply bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200;
+    animation: slideUpFade 0.4s ease-out both;
+  }
+}
+
+/* ── Entrance animation ───────────────────────────────────────── */
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
