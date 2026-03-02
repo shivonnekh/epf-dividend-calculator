@@ -1,9 +1,18 @@
 import { useState } from 'react'
-import { Plus, User, ChevronRight, Edit2, Trash2, TrendingUp, Calendar, Layers } from 'lucide-react'
+import { Plus, Edit2, Trash2, TrendingUp, ArrowUpRight } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { calculateYearData } from '../utils/calculations'
 import { formatRM } from '../utils/formatters'
 import PersonModal from './PersonModal'
+
+function computePortfolioBalance(persons) {
+  return persons.reduce((sum, person) => {
+    if (!person.years.length) return sum
+    const latest = [...person.years].sort((a, b) => b.year - a.year)[0]
+    const calc = calculateYearData(latest.openingBalance, latest.annualRate, latest.contributions)
+    return sum + calc.yearClosingBalance
+  }, 0)
+}
 
 export default function Dashboard() {
   const { data, navigateToPerson, deletePerson } = useApp()
@@ -12,49 +21,72 @@ export default function Dashboard() {
   const [deleteConfirm, setDeleteConfirm] = useState(null)
 
   const totalYears = data.persons.reduce((s, p) => s + p.years.length, 0)
+  const portfolioBalance = computePortfolioBalance(data.persons)
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
       {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5 mb-10">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">
-            EPF Dividend Calculator
+          <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-amber-500 dark:text-amber-400 mb-2.5">
+            Malaysia KWSP · Monthly Rest Method
+          </p>
+          <h1 className="font-display text-4xl sm:text-5xl text-slate-900 dark:text-white leading-[1.05]">
+            EPF Dividend<br className="hidden xs:block" /> Calculator
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-0.5 text-sm">
-            Malaysia KWSP — Monthly Rest Method
+          <p className="text-sm text-slate-400 dark:text-slate-500 mt-2.5 tracking-wide">
+            Precision dividend tracking across all profiles
           </p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="btn-primary shrink-0 self-start sm:self-auto">
+        <button onClick={() => setShowAdd(true)} className="btn-gold shrink-0 self-start sm:self-auto">
           <Plus className="w-4 h-4" />
-          Add Profile
+          New Profile
         </button>
       </div>
 
-      {/* Stats bar */}
+      {/* Portfolio overview panel */}
       {data.persons.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          <div className="card p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <User className="w-4 h-4 text-blue-500" />
-              <span className="stat-label !mb-0">Profiles</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{data.persons.length}</p>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700/60 overflow-hidden mb-10 shadow-sm">
+          <div className="px-6 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+            <div className="w-1 h-3.5 rounded-full bg-amber-500 dark:bg-amber-400" />
+            <span className="text-[10px] font-bold tracking-[0.22em] uppercase text-slate-400 dark:text-slate-500">
+              Portfolio Overview
+            </span>
           </div>
-          <div className="card p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Calendar className="w-4 h-4 text-green-500" />
-              <span className="stat-label !mb-0">Years Tracked</span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-slate-100 dark:divide-slate-800">
+            <div className="px-6 py-5">
+              <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-slate-400 dark:text-slate-500 mb-1.5">
+                Combined Balance
+              </p>
+              <p className="font-display text-2xl sm:text-3xl text-amber-600 dark:text-amber-400 leading-none">
+                {formatRM(portfolioBalance)}
+              </p>
             </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalYears}</p>
-          </div>
-          <div className="card p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Layers className="w-4 h-4 text-purple-500" />
-              <span className="stat-label !mb-0">Method</span>
+            <div className="px-6 py-5">
+              <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-slate-400 dark:text-slate-500 mb-1.5">
+                Profiles
+              </p>
+              <p className="font-display text-2xl sm:text-3xl text-slate-900 dark:text-white leading-none">
+                {data.persons.length}
+              </p>
             </div>
-            <p className="text-sm font-bold text-gray-900 dark:text-white">Monthly Rest</p>
+            <div className="px-6 py-5">
+              <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-slate-400 dark:text-slate-500 mb-1.5">
+                Years Tracked
+              </p>
+              <p className="font-display text-2xl sm:text-3xl text-slate-900 dark:text-white leading-none">
+                {totalYears}
+              </p>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-slate-400 dark:text-slate-500 mb-1.5">
+                Calculation
+              </p>
+              <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 mt-1 tracking-wide">
+                Monthly Rest
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -63,11 +95,12 @@ export default function Dashboard() {
       {data.persons.length === 0 ? (
         <EmptyState onAdd={() => setShowAdd(true)} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {data.persons.map(person => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {data.persons.map((person, index) => (
             <PersonCard
               key={person.id}
               person={person}
+              index={index}
               onOpen={() => navigateToPerson(person.id)}
               onEdit={() => setEditPerson(person)}
               onDelete={() => setDeleteConfirm(person)}
@@ -77,12 +110,14 @@ export default function Dashboard() {
           {/* Add new tile */}
           <button
             onClick={() => setShowAdd(true)}
-            className="card border-dashed hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all flex flex-col items-center justify-center gap-2 p-8 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 min-h-[140px]"
+            className="group flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700/70 hover:border-amber-400 dark:hover:border-amber-500/60 transition-all hover:bg-amber-50/50 dark:hover:bg-amber-900/10 p-10 min-h-[200px]"
           >
-            <div className="w-10 h-10 rounded-full border-2 border-dashed border-current flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-600 group-hover:border-amber-400 dark:group-hover:border-amber-500 flex items-center justify-center transition-colors text-slate-400 dark:text-slate-500 group-hover:text-amber-500 dark:group-hover:text-amber-400">
               <Plus className="w-5 h-5" />
             </div>
-            <span className="text-sm font-medium">Add Profile</span>
+            <span className="text-sm font-medium text-slate-400 dark:text-slate-500 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+              Add Profile
+            </span>
           </button>
         </div>
       )}
@@ -107,8 +142,7 @@ export default function Dashboard() {
   )
 }
 
-function PersonCard({ person, onOpen, onEdit, onDelete }) {
-  // Get latest year's closing balance if available
+function PersonCard({ person, index, onOpen, onEdit, onDelete }) {
   const sortedYears = [...person.years].sort((a, b) => b.year - a.year)
   const latestYear = sortedYears[0]
 
@@ -125,43 +159,58 @@ function PersonCard({ person, onOpen, onEdit, onDelete }) {
     .join('')
     .toUpperCase()
 
+  const yearRangeStr = person.years.length > 0
+    ? person.years[0].year + (person.years.length > 1 ? `–${person.years[person.years.length - 1].year}` : '')
+    : null
+
   return (
     <div
-      className="card hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all group cursor-pointer"
+      className="card-premium group cursor-pointer"
+      style={{ animationDelay: `${index * 55}ms` }}
       onClick={onOpen}
     >
+      {/* Amber top stripe */}
+      <div className="h-[2px] bg-gradient-to-r from-amber-500 via-amber-400/60 to-transparent dark:from-amber-400 dark:via-amber-500/40 rounded-t-2xl" />
+
       <div className="p-5">
-        <div className="flex items-start justify-between mb-4">
-          {/* Avatar + name */}
+        {/* Header */}
+        <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
-              {initials}
+            {/* Monogram */}
+            <div className="w-11 h-11 rounded-xl bg-slate-900 dark:bg-slate-800 flex items-center justify-center shrink-0 ring-1 ring-slate-800 dark:ring-slate-700">
+              <span className="font-display text-base text-amber-400 leading-none tracking-tight">
+                {initials}
+              </span>
             </div>
             <div className="min-w-0">
-              <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+              <h3 className="font-semibold text-slate-900 dark:text-white text-[15px] leading-tight truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                 {person.name}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {person.years.length} {person.years.length === 1 ? 'year' : 'years'} tracked
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                {person.years.length} {person.years.length === 1 ? 'year' : 'years'}
+                {yearRangeStr && (
+                  <span className="ml-1 text-slate-300 dark:text-slate-600">·</span>
+                )}
+                {yearRangeStr && <span className="ml-1">{yearRangeStr}</span>}
               </p>
             </div>
           </div>
 
-          {/* Action buttons — visible on hover */}
+          {/* Action buttons */}
           <div
-            className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={e => e.stopPropagation()}
           >
             <button
               onClick={onEdit}
-              className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+              className="p-1.5 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
               title="Edit profile"
             >
               <Edit2 className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={onDelete}
-              className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              className="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
               title="Delete profile"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -169,32 +218,37 @@ function PersonCard({ person, onOpen, onEdit, onDelete }) {
           </div>
         </div>
 
-        {/* Stats */}
-        {latestYear ? (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500 dark:text-gray-400">
-                Years: {person.years[0].year}
-                {person.years.length > 1 ? ` – ${person.years[person.years.length - 1].year}` : ''}
-              </span>
-              <span className="text-gray-500 dark:text-gray-400">
-                Latest: {latestYear.year} ({latestYear.annualRate}%)
-              </span>
-            </div>
-            {latestBalance !== null && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg px-3 py-2">
-                <p className="text-xs text-blue-600 dark:text-blue-400 mb-0.5">Latest Closing Balance</p>
-                <p className="font-bold text-blue-700 dark:text-blue-300 text-sm">{formatRM(latestBalance)}</p>
-              </div>
+        {/* Balance block */}
+        {latestBalance !== null ? (
+          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl px-4 py-4 mb-4 border border-slate-100 dark:border-slate-700/50">
+            <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-slate-400 dark:text-slate-500 mb-1.5">
+              Latest Closing Balance
+            </p>
+            <p className="font-display text-[1.6rem] text-slate-900 dark:text-white leading-none">
+              {formatRM(latestBalance)}
+            </p>
+            {latestYear && (
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
+                {latestYear.year}
+                <span className="mx-1.5 text-slate-300 dark:text-slate-600">·</span>
+                {latestYear.annualRate}% per annum
+              </p>
             )}
           </div>
         ) : (
-          <p className="text-xs text-gray-400 dark:text-gray-500 italic">No years added yet</p>
+          <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl px-4 py-3.5 mb-4 border border-slate-100 dark:border-slate-700/40">
+            <p className="text-xs text-slate-400 dark:text-slate-500 italic">
+              No year data yet — add a year to begin tracking
+            </p>
+          </div>
         )}
 
-        <div className="mt-3 flex items-center justify-end text-blue-600 dark:text-blue-400 text-xs font-medium">
-          <span>View Details</span>
-          <ChevronRight className="w-3.5 h-3.5 ml-0.5 group-hover:translate-x-0.5 transition-transform" />
+        {/* Footer */}
+        <div className="flex items-center justify-end">
+          <span className="text-xs font-medium text-slate-400 dark:text-slate-500 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors flex items-center gap-1">
+            View Details
+            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </span>
         </div>
       </div>
     </div>
@@ -203,17 +257,20 @@ function PersonCard({ person, onOpen, onEdit, onDelete }) {
 
 function EmptyState({ onAdd }) {
   return (
-    <div className="text-center py-20">
-      <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-5">
-        <TrendingUp className="w-10 h-10 text-blue-400 dark:text-blue-500" />
+    <div className="text-center py-24">
+      <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-amber-100 dark:border-amber-900/30 shadow-sm">
+        <TrendingUp className="w-9 h-9 text-amber-500 dark:text-amber-400" />
       </div>
-      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-        Start tracking your EPF
+      <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-amber-500 dark:text-amber-400 mb-3">
+        Get Started
+      </p>
+      <h3 className="font-display text-4xl text-slate-900 dark:text-white mb-3 leading-tight">
+        Track your EPF growth
       </h3>
-      <p className="text-gray-500 dark:text-gray-400 text-sm max-w-sm mx-auto mb-6">
+      <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm mx-auto mb-8 leading-relaxed">
         Create a profile and add your yearly opening balance, contributions, and dividend rate to calculate your KWSP dividends accurately.
       </p>
-      <button onClick={onAdd} className="btn-primary mx-auto">
+      <button onClick={onAdd} className="btn-gold mx-auto">
         <Plus className="w-4 h-4" />
         Create First Profile
       </button>
@@ -222,19 +279,18 @@ function EmptyState({ onAdd }) {
 }
 
 export function ConfirmDialog({ title, message, onCancel, onConfirm, confirmLabel = 'Delete', confirmClass = 'btn-danger' }) {
-  // Close on Escape
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}
     >
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-sm fade-in p-6">
-        <h3 className="font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">{message}</p>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700/60 w-full max-w-sm fade-in p-6">
+        <h3 className="font-semibold text-slate-900 dark:text-white mb-2">{title}</h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">{message}</p>
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+            className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
           >
             Cancel
           </button>
