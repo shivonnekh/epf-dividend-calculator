@@ -149,7 +149,7 @@ export function AppProvider({ children }) {
             if (y.year !== year) return y
             return {
               ...y,
-              contributions: { ...y.contributions, [month]: Math.max(0, parseFloat(value) || 0) },
+              contributions: { ...y.contributions, [month]: parseFloat(value) || 0 },
             }
           }),
         }

@@ -34,7 +34,7 @@ export function calculateYearData(openingBalance, annualRate, contributions) {
 
   for (let m = 1; m <= 12; m++) {
     const openBal = round2(prevBalance)
-    const contribution = round2(Math.max(0, parseFloat(contributions?.[m]) || 0))
+    const contribution = round2(parseFloat(contributions?.[m]) || 0)
 
     // Dividend is based on opening balance only (contribution this month doesn't count)
     const dividend = round2(openBal * monthlyRate)
