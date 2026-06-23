@@ -393,7 +393,7 @@ function EditableCell({ value, onChange, highlight = false }) {
   function commit() {
     setEditing(false)
     const n = parseFloat(input)
-    if (!isNaN(n) && n >= 0) onChange(n)
+    if (!isNaN(n)) onChange(n)
   }
 
   function handleKey(e) {
@@ -408,7 +408,6 @@ function EditableCell({ value, onChange, highlight = false }) {
         ref={inputRef}
         type="number"
         step="0.01"
-        min="0"
         value={input}
         onChange={e => setInput(e.target.value)}
         onBlur={commit}
@@ -418,13 +417,17 @@ function EditableCell({ value, onChange, highlight = false }) {
     )
   }
 
+  const isNegative = !highlight && value < 0
+
   return (
     <button
       onClick={startEdit}
       className={`text-right rounded px-2 py-0.5 transition-colors group w-full max-w-full tabular-nums ${
         highlight
           ? 'font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-          : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400'
+          : isNegative
+            ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+            : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400'
       }`}
       title="Click to edit"
     >

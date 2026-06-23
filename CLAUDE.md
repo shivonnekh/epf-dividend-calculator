@@ -34,16 +34,64 @@ State-managed single-page app with no router — navigation is driven by a `view
 
 ```
 AppContext (src/context/AppContext.jsx)
-  └─ holds: { data, darkMode, view, selectedPersonId, selectedYear }
+  └─ holds: { data, darkMode, view, selectedPersonId, selectedYear, cloudStatus }
   └─ exposes: all CRUD actions + navigate* helpers
   └─ persists: localStorage keys "epf-calculator-v1" and "epf-dark-mode"
+  └─ syncs:    Supabase (cloud) — see "Cloud sync" below
 
 App.jsx
   └─ renders one of: <Dashboard> | <PersonDetail> | <YearView>
      based on context.view
 ```
 
-### Data shape (localStorage)
+### Cloud sync (`src/lib/supabase.js`, `src/lib/epfSync.js`)
+
+Cross-device sync: open the deployed URL on any device → same data, live.
+localStorage stays as the offline fallback / cache.
+
+**Backend = the Whaley app's Supabase project (shared, intentionally).**
+- Same `app_state` table, but a dedicated row `id = 'epf-primary'`
+  (Whaley only ever touches `id = 'primary'` — the rows never collide).
+- RLS allows SELECT + UPDATE for any authenticated session; there is **no
+  INSERT policy**. The `epf-primary` row was seeded once via SQL, so the
+  client only ever UPDATEs it (never inserts). To re-seed in a fresh DB:
+  ```sql
+  insert into public.app_state (id, state)
+  values ('epf-primary', '{"persons":[]}'::jsonb)
+  on conflict (id) do nothing;
+  ```
+- Auth: silent anonymous sign-in (`signInAnonymously`), required by RLS.
+  Auth storage key is namespaced (`epf-supabase-auth`) so it doesn't clash
+  with Whaley's session in the same browser.
+- Realtime: `app_state` is already in the `supabase_realtime` publication,
+  so peer edits to `epf-primary` push automatically. Self-echo is filtered
+  via a per-device `clientId` (`epf-client-id` in localStorage).
+
+**Hydration rules (AppContext):**
+- On load: anon sign-in → read cloud row.
+  - Cloud has ≥1 person → adopt cloud as source of truth.
+  - Cloud empty / just-seeded blank → push LOCAL up (seed). An empty cloud
+    row NEVER wipes local data.
+- On change: debounced UPDATE to cloud (600ms), skipped until initial
+  hydration completes and skipped once right after applying a remote update.
+
+**Env vars** (copy from the Whaley project — never commit real values):
+`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` in `.env.local` (dev) and on
+the Vercel project (prod). Missing env = app runs local-only, no sync.
+
+### Deployment (Vercel)
+
+- Live: **https://epf-calculator-rust.vercel.app** (Vercel project
+  `epf-calculator`, account `shivonnekhoo` — same account as Whaley).
+- Deployed via Vercel CLI, **not Git-connected**: ship changes with
+  `vercel --prod` from the repo root. (To auto-deploy on push, connect the
+  GitHub repo in the Vercel dashboard.)
+
+### Data shape (localStorage + cloud blob)
+
+The exact same `{ persons: [...] }` object is what's stored in localStorage
+(`epf-calculator-v1`) AND in the Supabase `epf-primary` row's `state` column.
+`validateData()` (`src/utils/backup.js`) gates every load from both sources.
 
 ```js
 {
