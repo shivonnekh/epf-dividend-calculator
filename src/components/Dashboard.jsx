@@ -1,20 +1,94 @@
-import { useState } from 'react'
-import { Plus, User, ChevronRight, Edit2, Trash2, TrendingUp, Calendar, Layers } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Plus, User, ChevronRight, Edit2, Trash2, TrendingUp, Calendar, Layers, Download, Upload, AlertTriangle, X } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { calculateYearData } from '../utils/calculations'
 import { formatRM } from '../utils/formatters'
+import { exportData, importFromFile, getLastExportDate, daysSince } from '../utils/backup'
 import PersonModal from './PersonModal'
 
 export default function Dashboard() {
-  const { data, navigateToPerson, deletePerson } = useApp()
+  const { data, navigateToPerson, deletePerson, replaceAllData, loadStatus, dismissLoadStatus } = useApp()
   const [showAdd, setShowAdd] = useState(false)
   const [editPerson, setEditPerson] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [importConfirm, setImportConfirm] = useState(null) // { data, fileName }
+  const [importError, setImportError] = useState(null)
+  const [exportFlash, setExportFlash] = useState(false)
+  const fileInputRef = useRef(null)
 
   const totalYears = data.persons.reduce((s, p) => s + p.years.length, 0)
+  const lastExport = getLastExportDate()
+  const staleExport = lastExport ? daysSince(lastExport) >= 7 : data.persons.length > 0
+
+  function handleExport() {
+    exportData(data)
+    setExportFlash(true)
+    setTimeout(() => setExportFlash(false), 2000)
+  }
+
+  function handleImportClick() {
+    setImportError(null)
+    fileInputRef.current?.click()
+  }
+
+  async function handleFileChosen(e) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-picking the same file
+    if (!file) return
+    try {
+      const parsed = await importFromFile(file)
+      setImportConfirm({ data: parsed, fileName: file.name })
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed.')
+    }
+  }
+
+  function confirmImport() {
+    if (!importConfirm) return
+    replaceAllData(importConfirm.data)
+    setImportConfirm(null)
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+      {/* Corrupt-load warning banner */}
+      {loadStatus === 'corrupt' && (
+        <div className="mb-6 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 text-sm">
+            <p className="font-semibold text-amber-800 dark:text-amber-200">Saved data was unreadable</p>
+            <p className="text-amber-700 dark:text-amber-300 mt-1">
+              The previous data in this browser was corrupted and could not be loaded. It has been preserved
+              under a backup key (check DevTools → Local Storage) but the app has started from empty state.
+              If you have a <code className="text-xs">.json</code> export, use Import below.
+            </p>
+          </div>
+          <button
+            onClick={dismissLoadStatus}
+            className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 shrink-0"
+            aria-label="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Stale-export reminder (Safari ITP protection) */}
+      {staleExport && loadStatus !== 'corrupt' && (
+        <div className="mb-6 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+          <div className="flex-1 text-sm">
+            <p className="font-semibold text-blue-800 dark:text-blue-200">
+              {lastExport ? 'Backup is getting old' : 'No backup yet'}
+            </p>
+            <p className="text-blue-700 dark:text-blue-300 mt-1">
+              Safari auto-deletes browser storage after 7 days of inactivity. Click <b>Export</b> to save
+              a JSON file you can re-import if that happens.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
@@ -25,12 +99,61 @@ export default function Dashboard() {
           <p className="text-gray-500 dark:text-gray-400 mt-0.5 text-sm">
             Malaysia KWSP — Monthly Rest Method
           </p>
+          {lastExport && (
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              Last export: {lastExport.toLocaleDateString()} ({daysSince(lastExport)}d ago)
+            </p>
+          )}
         </div>
-        <button onClick={() => setShowAdd(true)} className="btn-primary shrink-0 self-start sm:self-auto">
-          <Plus className="w-4 h-4" />
-          Add Profile
-        </button>
+        <div className="flex gap-2 shrink-0 self-start sm:self-auto flex-wrap">
+          <button
+            onClick={handleImportClick}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+            title="Import from JSON backup"
+          >
+            <Upload className="w-4 h-4" />
+            Import
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={data.persons.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            title={data.persons.length === 0 ? 'Nothing to export yet' : 'Download JSON backup'}
+          >
+            <Download className="w-4 h-4" />
+            {exportFlash ? 'Exported ✓' : 'Export'}
+          </button>
+          <button onClick={() => setShowAdd(true)} className="btn-primary">
+            <Plus className="w-4 h-4" />
+            Add Profile
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={handleFileChosen}
+            className="hidden"
+          />
+        </div>
       </div>
+
+      {/* Import error toast */}
+      {importError && (
+        <div className="mb-6 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+          <div className="flex-1 text-sm">
+            <p className="font-semibold text-red-800 dark:text-red-200">Import failed</p>
+            <p className="text-red-700 dark:text-red-300 mt-1">{importError}</p>
+          </div>
+          <button
+            onClick={() => setImportError(null)}
+            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 shrink-0"
+            aria-label="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Stats bar */}
       {data.persons.length > 0 && (
@@ -94,6 +217,25 @@ export default function Dashboard() {
           message="This will permanently delete this profile and all its yearly data. This cannot be undone."
           onCancel={() => setDeleteConfirm(null)}
           onConfirm={() => { deletePerson(deleteConfirm.id); setDeleteConfirm(null) }}
+        />
+      )}
+
+      {/* Import confirm dialog */}
+      {importConfirm && (
+        <ConfirmDialog
+          title="Import and replace data?"
+          message={
+            `"${importConfirm.fileName}" contains ${importConfirm.data.persons.length} profile${
+              importConfirm.data.persons.length === 1 ? '' : 's'
+            } and will REPLACE all current data in this browser. ` +
+            (data.persons.length > 0
+              ? `You currently have ${data.persons.length} profile${data.persons.length === 1 ? '' : 's'} — these will be overwritten. Export your current data first if you want to keep it.`
+              : '')
+          }
+          onCancel={() => setImportConfirm(null)}
+          onConfirm={confirmImport}
+          confirmLabel="Import & Replace"
+          confirmClass="btn-primary"
         />
       )}
 
